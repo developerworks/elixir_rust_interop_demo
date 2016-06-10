@@ -1,0 +1,13 @@
+[package]
+name = "pi"
+version = "0.1.0"
+authors = ["Tatsuya Kawano <tatsuya@hibaridb.org>"]
+
+[lib]
+name = "pi_nif"
+crate-type = ["dylib"]
+
+[dependencies]
+ruster_unsafe = "*"
+time = "*"
+libc = ">=0.2.4"
