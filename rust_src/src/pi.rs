@@ -79,6 +79,6 @@ fn calc_pi_range(n: u32, offset: u32, count: u32) -> f64 {
 // }
 
 pub fn get_unix_timestamp() -> i64 {
-    let now_unixtime: i64 = time::now().to_timespec().sec;
-    now_unixtime
+    let secs: i64 = time::now().to_timespec().sec;
+    secs
 }

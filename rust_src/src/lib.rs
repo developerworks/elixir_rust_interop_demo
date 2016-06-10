@@ -41,21 +41,19 @@ static mut error_atom: ERL_NIF_TERM = 0 as ERL_NIF_TERM;
 
 extern crate time;
 
-// 创建NIF模块数据和初始化函数
 nif_init!(
   b"Elixir.PiNif\0",
-  Some(load),    // on load
-  None,          // on reload
-  Some(upgrade), // on upgrade
-  None,          // on unload
-  nif!(b"calc_pi\0",            1, calc_pi,             ERL_NIF_DIRTY_JOB_CPU_BOUND),
-  nif!(b"calc_pi_parallel\0",   2, calc_pi_parallel,    ERL_NIF_DIRTY_JOB_CPU_BOUND),
-  nif!(b"get_unix_timestamp\0", 0, get_unix_timestamp,  ERL_NIF_DIRTY_JOB_CPU_BOUND)
+  Some(load),
+  None,
+  Some(upgrade),
+  None,
+  nif!(b"calc_pi\0",            1, calc_pi,            ERL_NIF_DIRTY_JOB_CPU_BOUND),
+  nif!(b"calc_pi_parallel\0",   2, calc_pi_parallel,   ERL_NIF_DIRTY_JOB_CPU_BOUND),
+  nif!(b"get_unix_timestamp\0", 0, get_unix_timestamp, ERL_NIF_DIRTY_JOB_CPU_BOUND)
+  // nif!(b"get_time\0",    0, get_time,   ERL_NIF_DIRTY_JOB_CPU_BOUND)
 );
 
 
-// 初始化静态原子
-#[allow(const_err)]
 extern "C" fn load(env: *mut ErlNifEnv,
                    _priv_data: *mut *mut c_void,
                    _load_info: ERL_NIF_TERM)-> c_int {
@@ -66,7 +64,6 @@ extern "C" fn load(env: *mut ErlNifEnv,
     0
 }
 
-/// 何もしない
 extern "C" fn upgrade(_env: *mut ErlNifEnv,
                       _priv_data: *mut *mut c_void,
                       _old_priv_data: *mut *mut c_void,
@@ -75,59 +72,93 @@ extern "C" fn upgrade(_env: *mut ErlNifEnv,
 }
 
 /// Elixir: @spec calc_pi_nif(n :: non_neg_integer) :: {:ok, pi :: float} | no_return
-extern "C" fn calc_pi(env: *mut ErlNifEnv,
-                      argc: c_int,
-                      args: *const ERL_NIF_TERM) -> ERL_NIF_TERM {
-
+extern "C" fn calc_pi(env: *mut ErlNifEnv, argc: c_int, args: *const ERL_NIF_TERM) -> ERL_NIF_TERM {
 	let mut n: c_int = unsafe { uninitialized() };
-    if argc != 1
-        || 0 == unsafe { enif_get_int(env, *args, &mut n) }
-        || n <= 0 {
-        return unsafe { enif_make_badarg(env) };
+  if argc != 1 || 0 == unsafe { enif_get_int(env, *args, &mut n) } || n <= 0 {
+    return unsafe { enif_make_badarg(env) };
 	}
-
-    match pi::calc_pi(n as u32) {
-        Ok(pi) =>
-            make_ok_result(env, unsafe { &enif_make_double(env, pi as c_double) } ),
-        Err(reason) =>
-            make_error_result(env, &reason),
-    }
+  match pi::calc_pi(n as u32) {
+    Ok(pi) =>
+      make_ok_result(env, unsafe { &enif_make_double(env, pi as c_double) } ),
+    Err(reason) =>
+      make_error_result(env, &reason),
+  }
 }
 
 /// Elixir: @spec calc_pi_parallel(n :: non_neg_integer,
 ///                                num_threads :: non_neg_integer)
 ///                               :: {:ok, pi :: float} | {:error, term()} | no_return
-extern "C" fn calc_pi_parallel(env: *mut ErlNifEnv,
-                               argc: c_int,
-                               args: *const ERL_NIF_TERM) -> ERL_NIF_TERM {
+extern "C" fn calc_pi_parallel(env: *mut ErlNifEnv, argc: c_int, args: *const ERL_NIF_TERM) -> ERL_NIF_TERM {
 	let mut n: c_int = unsafe { uninitialized() };
-    let mut num_threads: c_int = unsafe { uninitialized() };
-    if argc != 2
-        || 0 == unsafe { enif_get_int(env, *args, &mut n) }
-        || 0 == unsafe { enif_get_int(env, *args.offset(1), &mut num_threads) }
-        || n <= 0 {
-        return unsafe { enif_make_badarg(env) };
-    }
-
-    match pi::calc_pi_parallel(n as u32, num_threads as u32) {
-        Ok(pi) =>
-            make_ok_result(env, unsafe { &enif_make_double(env, pi as c_double) }),
-        Err(reason) =>
-            make_error_result(env, &reason),
-    }
-}
-
-/// Elixir: @spec get_unix_timestamp() :: non_neg_integer
-/// 获取Unix时间戳, 单位为秒数
-extern "C" fn get_unix_timestamp(env: *mut ErlNifEnv,
-                                 argc: c_int,
-                                 args: *const ERL_NIF_TERM) -> ERL_NIF_TERM {
-  unsafe {
-      let mut unix_timestamp: i64 = pi::get_unix_timestamp();
-      enif_make_int64(env, unix_timestamp)
+  let mut num_threads: c_int = unsafe { uninitialized() };
+  if argc != 2
+      || 0 == unsafe { enif_get_int(env, *args, &mut n) }
+      || 0 == unsafe { enif_get_int(env, *args.offset(1), &mut num_threads) }
+      || n <= 0 {
+      return unsafe { enif_make_badarg(env) };
   }
-  // make_ok_result(env, unsafe { &enif_make_double(env, unix_timestamp as c_double) })
+
+  match pi::calc_pi_parallel(n as u32, num_threads as u32) {
+      Ok(pi) =>
+          make_ok_result(env, unsafe { &enif_make_double(env, pi as c_double) }),
+      Err(reason) =>
+          make_error_result(env, &reason),
+  }
 }
+
+/// Elixir: @spec get_time() :: non_neg_integer
+/// 获取Unix时间戳, 单位为秒数
+// extern "C" fn get_time(env: *mut ErlNifEnv, argc: c_int, args: *const ERL_NIF_TERM) -> ERL_NIF_TERM {
+//   unsafe {
+//       let mut seconds: i64 = pi::get_time();
+//       enif_make_int64(env, seconds)
+//   }
+// }
+
+
+/// Add two integers. `native_add(A,B) -> A+B.`
+extern "C" fn native_add(env: *mut ErlNifEnv, argc: c_int, args: *const ERL_NIF_TERM) -> ERL_NIF_TERM {
+  unsafe {
+    let mut a:c_int = uninitialized();
+    let mut b:c_int = uninitialized();
+    if argc == 2 &&
+       0 != enif_get_int(env, *args, &mut a) &&
+       0 != enif_get_int(env, *args.offset(1), &mut b) {
+        enif_make_int(env, a+b)
+    }
+    else {
+      enif_make_badarg(env)
+    }
+  }
+}
+
+/// Add integers provided in a 2-tuple. `tuple_add({A,B}) -> A+B.`
+// extern "C" fn tuple_add(env: *mut ErlNifEnv, argc: c_int, args: *const ERL_NIF_TERM) -> ERL_NIF_TERM {
+//   unsafe {
+//     let mut a:c_int = uninitialized();
+//     let mut b:c_int = uninitialized();
+//     let mut size:c_int = uninitialized();
+//     let mut tup:*const ERL_NIF_TERM = uninitialized();
+//     if argc == 1 && 0 != enif_get_tuple(env, *args, &mut size, &mut tup) &&
+//        size == 2 && 0 != enif_get_int(env, *tup, &mut a) &&
+//        0 != enif_get_int(env, *tup.offset(1), &mut b) {
+//         enif_make_int(env, a+b)
+//     }
+//     else {
+//         enif_make_badarg(env)
+//     }
+//   }
+// }
+
+extern "C" fn get_unix_timestamp(env: *mut ErlNifEnv,
+                         argc: c_int,
+                         args: *const ERL_NIF_TERM) -> ERL_NIF_TERM {
+  unsafe {
+    let mut seconds: i64 = pi::get_unix_timestamp();
+    enif_make_int64(env, seconds)
+  }
+}
+
 
 fn make_ok_result(env: *mut ErlNifEnv, result: *const ERL_NIF_TERM) -> ERL_NIF_TERM {
     let tuple_elements = unsafe { [ok_atom, *result] };

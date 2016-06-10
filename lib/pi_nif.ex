@@ -22,6 +22,7 @@
 ## OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 ## THE SOFTWARE.
 
+require Logger
 defmodule PiNif do
 
   @on_load   :init
@@ -42,6 +43,12 @@ defmodule PiNif do
     :erlang.nif_error({:nif_not_loaded, @mod})
   end
 
+  @spec get_unix_timestamp :: non_neg_integer
+  def get_unix_timestamp do
+    :erlang.nif_error({:nif_not_loaded, @mod})
+  end
+
+
   def init() do
     priv_dir = case :code.priv_dir(@app) do
                  dir when is_list(dir) ->
@@ -57,6 +64,7 @@ defmodule PiNif do
                    end
                end
     so_name = :filename.join(priv_dir, 'lib' ++ @lib_name)
+    Logger.info "Library name: #{so_name}"
     :erlang.load_nif(so_name, 0)
   end
 
